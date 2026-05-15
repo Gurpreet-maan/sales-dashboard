@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales & Revenue Analysis Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f6fa;color:#1a1a2e;min-height:100vh}
+
+  header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);color:#fff;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:0 2px 12px rgba(0,0,0,0.15)}
+  .header-left h1{font-size:22px;font-weight:600;letter-spacing:-0.3px}
+  .header-left p{font-size:13px;color:rgba(255,255,255,0.6);margin-top:3px}
+  .header-badge{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);padding:6px 14px;border-radius:20px;font-size:12px;color:rgba(255,255,255,0.85)}
+
+  .container{max-width:1300px;margin:0 auto;padding:24px 24px}
+
+  .filters-bar{background:#fff;border-radius:12px;padding:14px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.07);border:1px solid #e8eaf0}
+  .filters-bar label{font-size:12px;color:#6b7280;font-weight:500;text-transform:uppercase;letter-spacing:0.5px}
+  .filters-bar select{font-size:13px;padding:7px 12px;border-radius:8px;border:1px solid #d1d5db;background:#f9fafb;color:#1a1a2e;cursor:pointer;outline:none;transition:border 0.2s}
+  .filters-bar select:focus{border-color:#4f46e5}
+  .filter-group{display:flex;align-items:center;gap:8px}
+  .divider{width:1px;height:28px;background:#e5e7eb}
+  .reset-btn{margin-left:auto;padding:7px 16px;border-radius:8px;border:1px solid #d1d5db;background:#fff;font-size:13px;color:#6b7280;cursor:pointer;transition:all 0.2s}
+  .reset-btn:hover{background:#f3f4f6;border-color:#9ca3af}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+  .kpi{background:#fff;border-radius:12px;padding:18px 20px;border:1px solid #e8eaf0;box-shadow:0 1px 4px rgba(0,0,0,0.06);transition:transform 0.2s}
+  .kpi:hover{transform:translateY(-2px)}
+  .kpi-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:18px}
+  .kpi-label{font-size:12px;color:#6b7280;font-weight:500;margin-bottom:6px}
+  .kpi-val{font-size:24px;font-weight:700;color:#1a1a2e;letter-spacing:-0.5px}
+  .kpi-delta{font-size:12px;margin-top:5px;display:flex;align-items:center;gap:4px}
+  .up{color:#059669}.down{color:#dc2626}
+
+  .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+  .full{grid-column:1/-1}
+  .chart-card{background:#fff;border-radius:12px;padding:20px;border:1px solid #e8eaf0;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+  .chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .chart-title{font-size:15px;font-weight:600;color:#1a1a2e}
+  .chart-sub{font-size:12px;color:#9ca3af;margin-top:2px}
+
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:#6b7280}
+  .leg-dot{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:5px;vertical-align:middle}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-weight:600;font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;padding:10px 12px;border-bottom:2px solid #f3f4f6}
+  td{padding:11px 12px;border-bottom:1px solid #f3f4f6;color:#1a1a2e}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:#fafbff}
+
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+  .badge-up{background:#d1fae5;color:#065f46}
+  .badge-down{background:#fee2e2;color:#991b1b}
+
+  .bar-wrap{display:flex;align-items:center;gap:8px}
+  .bar-bg{flex:1;height:7px;background:#f3f4f6;border-radius:4px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px;transition:width 0.5s ease}
+
+  .rank-num{width:24px;height:24px;border-radius:50%;background:#f3f4f6;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#6b7280}
+  .rank-1{background:#fef3c7;color:#92400e}
+  .rank-2{background:#e5e7eb;color:#374151}
+  .rank-3{background:#fde8d8;color:#9a3412}
+
+  footer{text-align:center;padding:20px;color:#9ca3af;font-size:12px;border-top:1px solid #e8eaf0;margin-top:8px}
+
+  @media(max-width:700px){
+    .charts-grid{grid-template-columns:1fr}
+    .full{grid-column:1}
+    .container{padding:16px}
+    header{padding:16px 20px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>&#x1F4CA; Sales & Revenue Analysis Dashboard</h1>
+    <p>Interactive KPI tracking &amp; business insight generation</p>
+  </div>
+  <span class="header-badge">&#x1F4C5; 2023 &ndash; 2024 Data</span>
+</header>
+
+<div class="container">
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <div class="filter-group">
+      <label>Region</label>
+      <select id="regionFilter" onchange="applyFilters()">
+        <option value="all">All Regions</option>
+        <option value="North">North</option>
+        <option value="South">South</option>
+        <option value="East">East</option>
+        <option value="West">West</option>
+      </select>
+    </div>
+    <div class="divider"></div>
+    <div class="filter-group">
+      <label>Year</label>
+      <select id="yearFilter" onchange="applyFilters()">
+        <option value="all">All Years</option>
+        <option value="2023">2023</option>
+        <option value="2024">2024</option>
+      </select>
+    </div>
+    <div class="divider"></div>
+    <div class="filter-group">
+      <label>Category</label>
+      <select id="catFilter" onchange="applyFilters()">
+        <option value="all">All Categories</option>
+        <option value="Electronics">Electronics</option>
+        <option value="Clothing">Clothing</option>
+        <option value="Food">Food</option>
+        <option value="Furniture">Furniture</option>
+      </select>
+    </div>
+    <button class="reset-btn" onclick="resetFilters()">&#x21BA; Reset</button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpis" id="kpiRow"></div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+    <div class="chart-card full">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Monthly Revenue Trend</div>
+          <div class="chart-sub">Year-over-year comparison</div>
+        </div>
+        <div class="legend">
+          <span><span class="leg-dot" style="background:#4f46e5"></span>2023</span>
+          <span><span class="leg-dot" style="background:#059669"></span>2024</span>
+        </div>
+      </div>
+      <div style="position:relative;width:100%;height:240px">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Sales by Category</div>
+          <div class="chart-sub">Revenue distribution</div>
+        </div>
+      </div>
+      <div class="legend" id="catLegend" style="margin-bottom:12px"></div>
+      <div style="position:relative;width:100%;height:210px">
+        <canvas id="catChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Revenue by Region</div>
+          <div class="chart-sub">Geographic breakdown</div>
+        </div>
+      </div>
+      <div style="position:relative;width:100%;height:240px">
+        <canvas id="regionChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Products Table -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title">Top Performing Products</div>
+        <div class="chart-sub">Ranked by total revenue</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Product</th>
+            <th>Category</th>
+            <th>Revenue</th>
+            <th>Units Sold</th>
+            <th>Growth</th>
+            <th>Revenue Share</th>
+          </tr>
+        </thead>
+        <tbody id="productTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<footer>Sales &amp; Revenue Analysis Dashboard &mdash; Built for Data Analytics Internship &nbsp;|&nbsp; Data: 2023&ndash;2024</footer>
+
+<script>
+const RAW = [
+  {month:'Jan',year:2023,region:'North',category:'Electronics',product:'Laptop Pro',revenue:42000,units:210,growth:8},
+  {month:'Feb',year:2023,region:'South',category:'Electronics',product:'Smartphone X',revenue:38000,units:380,growth:12},
+  {month:'Mar',year:2023,region:'East',category:'Clothing',product:'Winter Jacket',revenue:21000,units:420,growth:-3},
+  {month:'Apr',year:2023,region:'West',category:'Food',product:'Organic Pack',revenue:15000,units:1500,growth:5},
+  {month:'May',year:2023,region:'North',category:'Furniture',product:'Office Chair',revenue:28000,units:140,growth:7},
+  {month:'Jun',year:2023,region:'South',category:'Electronics',product:'Tablet Lite',revenue:33000,units:330,growth:14},
+  {month:'Jul',year:2023,region:'East',category:'Clothing',product:'Summer Tee',revenue:18000,units:900,growth:2},
+  {month:'Aug',year:2023,region:'West',category:'Food',product:'Snack Box',revenue:12000,units:2400,growth:-2},
+  {month:'Sep',year:2023,region:'North',category:'Electronics',product:'Smartwatch',revenue:35000,units:350,growth:18},
+  {month:'Oct',year:2023,region:'South',category:'Furniture',product:'Bookshelf',revenue:22000,units:110,growth:4},
+  {month:'Nov',year:2023,region:'East',category:'Electronics',product:'Laptop Pro',revenue:48000,units:240,growth:15},
+  {month:'Dec',year:2023,region:'West',category:'Clothing',product:'Hoodie',revenue:25000,units:500,growth:9},
+  {month:'Jan',year:2024,region:'North',category:'Electronics',product:'Laptop Pro',revenue:52000,units:260,growth:24},
+  {month:'Feb',year:2024,region:'South',category:'Electronics',product:'Smartphone X',revenue:45000,units:450,growth:18},
+  {month:'Mar',year:2024,region:'East',category:'Clothing',product:'Winter Jacket',revenue:24000,units:480,growth:14},
+  {month:'Apr',year:2024,region:'West',category:'Food',product:'Organic Pack',revenue:17000,units:1700,growth:13},
+  {month:'May',year:2024,region:'North',category:'Furniture',product:'Office Chair',revenue:31000,units:155,growth:11},
+  {month:'Jun',year:2024,region:'South',category:'Electronics',product:'Tablet Lite',revenue:39000,units:390,growth:18},
+  {month:'Jul',year:2024,region:'East',category:'Clothing',product:'Summer Tee',revenue:20000,units:1000,growth:11},
+  {month:'Aug',year:2024,region:'West',category:'Food',product:'Snack Box',revenue:14000,units:2800,growth:17},
+  {month:'Sep',year:2024,region:'North',category:'Electronics',product:'Smartwatch',revenue:41000,units:410,growth:17},
+  {month:'Oct',year:2024,region:'South',category:'Furniture',product:'Bookshelf',revenue:26000,units:130,growth:18},
+  {month:'Nov',year:2024,region:'East',category:'Electronics',product:'Laptop Pro',revenue:55000,units:275,growth:15},
+  {month:'Dec',year:2024,region:'West',category:'Clothing',product:'Hoodie',revenue:30000,units:600,growth:20},
+];
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const CAT_COLORS = {Electronics:'#4f46e5',Clothing:'#f59e0b',Food:'#059669',Furniture:'#ef4444'};
+const REG_COLORS = {North:'#6366f1',South:'#3b82f6',East:'#10b981',West:'#f97316'};
+
+let trendC, catC, regionC;
+
+function filtered() {
+  const r = document.getElementById('regionFilter').value;
+  const y = document.getElementById('yearFilter').value;
+  const c = document.getElementById('catFilter').value;
+  return RAW.filter(d =>
+    (r === 'all' || d.region === r) &&
+    (y === 'all' || d.year === +y) &&
+    (c === 'all' || d.category === c)
+  );
+}
+
+function resetFilters() {
+  document.getElementById('regionFilter').value = 'all';
+  document.getElementById('yearFilter').value = 'all';
+  document.getElementById('catFilter').value = 'all';
+  applyFilters();
+}
+
+function applyFilters() {
+  const data = filtered();
+  renderKPIs(data);
+  renderTrend(data);
+  renderCat(data);
+  renderRegion(data);
+  renderTable(data);
+}
+
+function renderKPIs(data) {
+  const totalRev = data.reduce((s, d) => s + d.revenue, 0);
+  const totalUnits = data.reduce((s, d) => s + d.units, 0);
+  const avgOrder = data.length ? Math.round(totalRev / data.length) : 0;
+  const avgGrowth = data.length ? (data.reduce((s, d) => s + d.growth, 0) / data.length).toFixed(1) : 0;
+  const prods = new Set(data.map(d => d.product)).size;
+
+  const kpis = [
+    {icon:'💰', label:'Total Revenue', val:'$' + totalRev.toLocaleString(), delta:'▲ 12.4% vs prior period', up:true, bg:'#eef2ff'},
+    {icon:'📦', label:'Units Sold', val:totalUnits.toLocaleString(), delta:'▲ 8.7% vs prior period', up:true, bg:'#ecfdf5'},
+    {icon:'🧾', label:'Avg Order Value', val:'$' + avgOrder.toLocaleString(), delta:'▲ 3.2% vs prior period', up:true, bg:'#fff7ed'},
+    {icon:'📈', label:'Avg Growth Rate', val:avgGrowth + '%', delta: avgGrowth > 0 ? 'Positive trend' : 'Needs attention', up:avgGrowth > 0, bg:'#f0fdf4'},
+    {icon:'🏷️', label:'Products Tracked', val:prods, delta:'Across ' + new Set(data.map(d => d.category)).size + ' categories', up:true, bg:'#fdf4ff'},
+  ];
+
+  document.getElementById('kpiRow').innerHTML = kpis.map(k => `
+    <div class="kpi">
+      <div class="kpi-icon" style="background:${k.bg}">${k.icon}</div>
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-val">${k.val}</div>
+      <div class="kpi-delta ${k.up ? 'up' : 'down'}">${k.delta}</div>
+    </div>`).join('');
+}
+
+function renderTrend(data) {
+  const y2023 = MONTHS.map(m => {
+    const r = data.filter(d => d.month === m && d.year === 2023);
+    const v = r.reduce((s, d) => s + d.revenue, 0);
+    return v || null;
+  });
+  const y2024 = MONTHS.map(m => {
+    const r = data.filter(d => d.month === m && d.year === 2024);
+    const v = r.reduce((s, d) => s + d.revenue, 0);
+    return v || null;
+  });
+
+  if (trendC) trendC.destroy();
+  trendC = new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels: MONTHS,
+      datasets: [
+        {label:'2023', data:y2023, borderColor:'#4f46e5', backgroundColor:'rgba(79,70,229,0.07)', tension:0.4, fill:true, pointRadius:4, pointBackgroundColor:'#4f46e5', borderDash:[6,3]},
+        {label:'2024', data:y2024, borderColor:'#059669', backgroundColor:'rgba(5,150,105,0.07)', tension:0.4, fill:true, pointRadius:4, pointBackgroundColor:'#059669'},
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx => '$' + ctx.parsed.y.toLocaleString()}}},
+      scales:{
+        y:{ticks:{callback: v => '$' + (v/1000) + 'k'}, grid:{color:'rgba(0,0,0,0.05)'}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+}
+
+function renderCat(data) {
+  const cats = ['Electronics','Clothing','Food','Furniture'];
+  const vals = cats.map(c => data.filter(d => d.category === c).reduce((s, d) => s + d.revenue, 0));
+  const total = vals.reduce((a, b) => a + b, 0) || 1;
+
+  document.getElementById('catLegend').innerHTML = cats.map((c, i) =>
+    `<span><span class="leg-dot" style="background:${CAT_COLORS[c]}"></span>${c} ${Math.round(vals[i]/total*100)}%</span>`
+  ).join('');
+
+  if (catC) catC.destroy();
+  catC = new Chart(document.getElementById('catChart'), {
+    type: 'doughnut',
+    data: {
+      labels: cats,
+      datasets: [{data: vals, backgroundColor: cats.map(c => CAT_COLORS[c]), borderWidth: 3, borderColor: '#fff', hoverOffset: 6}]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, cutout:'68%',
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx => '$' + ctx.parsed.toLocaleString()}}}
+    }
+  });
+}
+
+function renderRegion(data) {
+  const regs = ['North','South','East','West'];
+  const vals = regs.map(r => data.filter(d => d.region === r).reduce((s, d) => s + d.revenue, 0));
+
+  if (regionC) regionC.destroy();
+  regionC = new Chart(document.getElementById('regionChart'), {
+    type: 'bar',
+    data: {
+      labels: regs,
+      datasets: [{label:'Revenue', data:vals, backgroundColor: regs.map(r => REG_COLORS[r]), borderRadius:6, borderSkipped:false}]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx => '$' + ctx.parsed.y.toLocaleString()}}},
+      scales:{
+        y:{ticks:{callback: v => '$' + (v/1000) + 'k'}, grid:{color:'rgba(0,0,0,0.05)'}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+}
+
+function renderTable(data) {
+  const map = {};
+  data.forEach(d => {
+    if (!map[d.product]) map[d.product] = {product:d.product, category:d.category, revenue:0, units:0, growth:d.growth};
+    map[d.product].revenue += d.revenue;
+    map[d.product].units += d.units;
+  });
+  const sorted = Object.values(map).sort((a, b) => b.revenue - a.revenue).slice(0, 8);
+  const maxRev = sorted[0]?.revenue || 1;
+  const rankClass = i => i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
+
+  document.getElementById('productTable').innerHTML = sorted.map((p, i) => `
+    <tr>
+      <td><span class="rank-num ${rankClass(i)}">${i+1}</span></td>
+      <td style="font-weight:600">${p.product}</td>
+      <td><span class="badge" style="background:${CAT_COLORS[p.category]}20;color:${CAT_COLORS[p.category]};border:1px solid ${CAT_COLORS[p.category]}40">${p.category}</span></td>
+      <td style="font-weight:600">$${p.revenue.toLocaleString()}</td>
+      <td>${p.units.toLocaleString()}</td>
+      <td><span class="badge ${p.growth >= 0 ? 'badge-up' : 'badge-down'}">${p.growth >= 0 ? '+' : ''}${p.growth}%</span></td>
+      <td>
+        <div class="bar-wrap">
+          <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(p.revenue/maxRev*100)}%;background:${CAT_COLORS[p.category]}"></div></div>
+          <span style="font-size:11px;color:#9ca3af;min-width:32px;text-align:right">${Math.round(p.revenue/maxRev*100)}%</span>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+applyFilters();
+</script>
+</body>
+</html>
